@@ -7472,6 +7472,7 @@ CpuDefinitionInfoList *qmp_query_cpu_definitions(Error **errp)
 
 #endif /* !CONFIG_USER_ONLY */
 
+static bool no_arch_cap_on_amd = false;
 uint64_t x86_cpu_get_supported_feature_word(X86CPU *cpu, FeatureWord w)
 {
     FeatureWordInfo *wi = &feature_word_info[w];
@@ -7538,7 +7539,11 @@ uint64_t x86_cpu_get_supported_feature_word(X86CPU *cpu, FeatureWord w)
         }
 #endif
         break;
-
+    case FEAT_7_0_EDX:
+        if (no_arch_cap_on_amd) {
+            r |= CPUID_7_0_EDX_ARCH_CAPABILITIES;
+        }
+        break;
     default:
         break;
     }
@@ -9291,6 +9296,14 @@ static void x86_cpu_realizefn(DeviceState *dev, Error **errp)
         }
     }
 
+    /* compat: on old version of qemu (cpu->no_arch_cap_on_amd == true),
+       arch-capabilities is on even if the CPUID says otherwise
+       has to do it before x86_cpu_filter_features */
+    if (cpu->no_arch_cap_on_amd) {
+        no_arch_cap_on_amd = true;
+        env->features[FEAT_7_0_EDX] |= CPUID_7_0_EDX_ARCH_CAPABILITIES;
+    }
+
     if (x86_cpu_filter_features(cpu, cpu->check_cpuid || cpu->enforce_cpuid)) {
         if (cpu->enforce_cpuid) {
             error_setg(&local_err,
@@ -10004,6 +10017,8 @@ static const Property x86_cpu_properties[] = {
                      true),
     DEFINE_PROP_BOOL("x-l1-cache-per-thread", X86CPU, l1_cache_per_core, true),
     DEFINE_PROP_BOOL("x-force-cpuid-0x1f", X86CPU, force_cpuid_0x1f, false),
+
+    DEFINE_PROP_BOOL("no-arch-cap-on-amd", X86CPU, no_arch_cap_on_amd, false),
 };
 
 #ifndef CONFIG_USER_ONLY

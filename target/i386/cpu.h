@@ -2343,6 +2343,8 @@ struct ArchCPU {
     int32_t hv_max_vps;
 
     bool xen_vapic;
+
+    bool no_arch_cap_on_amd;
 };
 
 typedef struct X86CPUModel X86CPUModel;
